@@ -1,7 +1,9 @@
 from tkinter import *
 from tkinter import ttk
+from tkinter import filedialog
 from tkinter import messagebox as mb
 from psycopg2 import *
+from docx import Document
 
 root = Tk()
 root.geometry('800x600')
@@ -31,7 +33,7 @@ class GUI:
         self.createTxtBut = Button(root, width=3, height=1, text='TXT', font='TimesNewRoman 8',
                                    bg='#7c29d0', activebackground='#b27fe5', command=self.createTxt)
         self.createDocxBut = Button(root, width=3, height=1, text='TXT', font='TimesNewRoman 8',
-                                   bg='#7c29d0', activebackground='#b27fe5', command=self.createDocx)
+                                    bg='#7c29d0', activebackground='#b27fe5', command=self.createDocx)
         self.createPdfBut = Button(root, width=3, height=1, text='TXT', font='TimesNewRoman 8',
                                    bg='#7c29d0', activebackground='#b27fe5', command=self.createPdf)
         self.createTxtBut.place(x=490, y=556)
@@ -81,10 +83,32 @@ class GUI:
                                     'номер!')
 
     def createTxt(self):
-        self.getAllNotes(outInfo=)
+        self.creatingTxtWin = Toplevel(root, bg='#b27fe5')
+        Label(self.creatingTxtWin, text='Сохранение в формате ".txt"', bg='#b27fe5').pack()
+        Button(self.creatingTxtWin, text='Выбрать место сохранения...', bg='#b27fe5',
+               command=self.selectDirectory).pack()
+        Label(self.creatingTxtWin, text='Введите имя нового файла:', bg='#b27fe5').pack()
+        entryFileName = Entry(self.creatingTxtWin)
+        entryFileName.pack()
+        Button(self.creatingTxtWin, text='Создать', bg='#b27fe5',
+               command=lambda: self.createTxtFile(fileName=entryFileName.get())).pack()
 
     def createDocx(self):
-        pass
+        doc = Document()
+
+        table = doc.add_table(rows=1, cols=2)
+        table.style = 'Table Grid'
+
+        row = table.rows[0].cells
+        row[0].text = '№'
+        row[1].text = 'Заметка'
+
+        for id, note in self.dataForDocx():
+            row = table.add_row().cells
+            row[0].text = str(id)
+            row[1].text = note
+            
+        doc.save('Название документа.docx')
 
     def createPdf(self):
         pass
@@ -108,7 +132,34 @@ class GUI:
         elif outInfo == 'tuples':
             return self.notes, self.ids
 
+    def selectDirectory(self):
+        self.directory = filedialog.askdirectory()
+        self.creatingTxtWin.lift(root)
+
+    def createTxtFile(self, fileName):
+        if self.getAllNotes(outInfo='string'):
+            notes = self.getAllNotes(outInfo='string')
+            try:
+                txtFile = open(file=f'{self.directory}/{fileName}.txt', mode='w+', encoding="utf-8")
+                txtFile.writelines(notes)
+                txtFile.close()
+                self.creatingTxtWin.destroy()
+
+            except:
+                mb.showerror('ОШИБКА', 'Не выбрана директория\nили название файла')
+                self.createTxt()
+
+    def dataForDocx(self):
+        self.notes, self.ids = self.getAllNotes(outInfo='tuples')
+        data = []
+        for index in range(len(self.ids)):
+            data.append((self.ids[index], self.notes[index]))
+
+        data = tuple(data)
+        return data
+
 
 if __name__ == '__main__':
     tManager = GUI()
+    tManager.createDocx()
     root.mainloop()
